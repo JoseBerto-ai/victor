@@ -41,10 +41,9 @@ def create_initial_board():
 move_count = 0
 
 def draw_board(win):
-    # Dibujar tablero
     for row in range(ROWS):
         for col in range(COLS):
-            color = WHITE if (row + col) % 2 == 0 else BLACK
+            color = BLACK if (row + col) % 2 == 0 else WHITE
             pygame.draw.rect(win, color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
     # Dibujar fichas
