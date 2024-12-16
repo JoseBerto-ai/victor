@@ -41,6 +41,7 @@ def create_initial_board():
 move_count = 0
 
 def draw_board(win):
+
     for row in range(ROWS):
         for col in range(COLS):
             color = BLACK if (row + col) % 2 == 0 else WHITE
@@ -242,7 +243,7 @@ def menu():
         WIN.fill(BLACK)
 
         # Títulos y opciones
-        title_text = FONT.render("Juego de Damas 4x4", True, WHITE)
+        title_text = FONT.render("Damas Minimax 4x4", True, WHITE)
         play_text_lines = [
             "'1' Jugar (Humano vs IA)",
             "'2' Salir"
