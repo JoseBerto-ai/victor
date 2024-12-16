@@ -22,7 +22,7 @@ GREEN = (0, 255, 0)
 
 # Crear ventana
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Juego de Damas 4x4")
+pygame.display.set_caption("Damas Minimax 4x4")
 
 # Fuente para mostrar texto
 FONT = pygame.font.SysFont('arial', 32)
