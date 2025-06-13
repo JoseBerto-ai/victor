@@ -39,6 +39,8 @@ def create_initial_board():
 
 # Contador de movimientos
 move_count = 0
+# Registrar el último movimiento realizado para mostrarlo al final
+last_move = None
 
 def draw_board(win):
 
@@ -100,18 +102,21 @@ def get_possible_moves(player):
     return jump_moves if jump_moves else normal_moves
 
 def make_move(move, player):
-    global move_count
-    # Realizar un movimiento
+    global move_count, last_move
+    # Realizar un movimiento y registrar información
     start, end = move
     start_row, start_col = start
     end_row, end_col = end
 
+    captured_piece = None
+    if abs(start_row - end_row) == 2:
+        mid_row, mid_col = (start_row + end_row) // 2, (start_col + end_col) // 2
+        captured_piece = board[mid_row][mid_col]
+
     board[start_row][start_col] = None
     board[end_row][end_col] = player
 
-    # Eliminar pieza capturada
-    if abs(start_row - end_row) == 2:
-        mid_row, mid_col = (start_row + end_row) // 2, (start_col + end_col) // 2
+    if captured_piece:
         board[mid_row][mid_col] = None
 
     # Coronar si alcanza el otro extremo
@@ -122,11 +127,27 @@ def make_move(move, player):
         if board[end_row][end_col] != 'AIR':
             board[end_row][end_col] = 'AIR'
 
+    # Guardar el último movimiento para mostrarlo al finalizar
+    last_move = {
+        'player': player,
+        'start': start,
+        'end': end,
+        'captured': captured_piece,
+    }
+
 def ai_move():
-    # Movimiento simple de IA: seleccionar el primer movimiento disponible
-    moves = get_possible_moves('AIR') if any('AIR' in row for row in board) else get_possible_moves('AI')
-    if moves:
-        make_move(moves[0], 'AIR' if 'AIR' in moves[0][0] else 'AI')
+    """Realizar un movimiento para la IA priorizando las capturas."""
+    moves_air = get_possible_moves('AIR')
+    moves_ai = get_possible_moves('AI')
+    moves = moves_air + moves_ai
+    if not moves:
+        return
+
+    jump_moves = [m for m in moves if abs(m[0][0] - m[1][0]) == 2]
+    chosen_move = jump_moves[0] if jump_moves else moves[0]
+    start_row, start_col = chosen_move[0]
+    piece = board[start_row][start_col]
+    make_move(chosen_move, piece)
 
 def check_game_over():
     # Verificar si los jugadores tienen piezas
@@ -155,8 +176,14 @@ def check_game_over():
     return None
 
 def display_winner(win, winner):
-    # Mostrar el ganador en la interfaz con formato adaptado para saltos de línea
+    """Mostrar el ganador y el último movimiento realizado."""
     lines = f"Ganador: {winner}".split("\n")
+    if last_move:
+        player_name = "Humano" if last_move['player'] in ['H', 'HR'] else "IA"
+        move_desc = f"{player_name} {last_move['start']} -> {last_move['end']}"
+        if last_move['captured']:
+            move_desc += f" comió {last_move['captured']}"
+        lines.append(move_desc)
     win.fill(BLACK)
 
     for i, line in enumerate(lines):
@@ -183,9 +210,10 @@ def draw_move_counter(win, move_count):
 
 # Modificar la función main para manejar el límite de movimientos
 def main(player_starts):
-    global move_count, board
+    global move_count, board, last_move
     board = create_initial_board()
     move_count = 0  # Reiniciar el contador de movimientos
+    last_move = None
     clock = pygame.time.Clock()
     running = True
     selected_piece = None
@@ -238,6 +266,61 @@ def main(player_starts):
     pygame.quit()
     sys.exit()
 
+def main_multiplayer():
+    """Modo dos jugadores en la misma computadora."""
+    global move_count, board, last_move
+    board = create_initial_board()
+    move_count = 0
+    last_move = None
+    clock = pygame.time.Clock()
+    running = True
+    selected_piece = None
+    player_turn = 'H'
+
+    while running:
+        clock.tick(60)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                row, col = get_square_under_mouse()
+                possible_moves = get_possible_moves(board[selected_piece[0]][selected_piece[1]]) if selected_piece else []
+
+                if selected_piece:
+                    move = (selected_piece, (row, col))
+                    if move in possible_moves:
+                        piece = board[selected_piece[0]][selected_piece[1]]
+                        make_move(move, piece)
+                        selected_piece = None
+                        player_turn = 'AI' if player_turn == 'H' else 'H'
+                        move_count += 1
+                    else:
+                        selected_piece = None
+                elif (
+                    (player_turn == 'H' and board[row][col] in ['H', 'HR']) or
+                    (player_turn == 'AI' and board[row][col] in ['AI', 'AIR'])
+                ):
+                    selected_piece = (row, col)
+
+        # Verificar si el juego terminó
+        winner = check_game_over()
+        if winner:
+            display_winner(WIN, winner)
+            return
+
+        if move_count >= 64:
+            display_winner(WIN, "Empate (se alcanzó el límite de movimientos)")
+            return
+
+        draw_board(WIN)
+        draw_move_counter(WIN, move_count)
+        pygame.display.flip()
+
+    pygame.quit()
+    sys.exit()
+
 def menu():
     while True:
         WIN.fill(BLACK)
@@ -246,7 +329,8 @@ def menu():
         title_text = FONT.render("Damas Minimax 4x4", True, WHITE)
         play_text_lines = [
             "'1' Jugar (Humano vs IA)",
-            "'2' Salir"
+            "'2' Jugar dos jugadores",
+            "'3' Salir"
         ]
 
         WIN.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 50))
@@ -289,6 +373,8 @@ def menu():
                                     waiting_for_input = False
                                     main(False)
                 elif event.key == pygame.K_2:
+                    main_multiplayer()
+                elif event.key == pygame.K_3:
                     pygame.quit()
                     sys.exit()
 
